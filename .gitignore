@@ -1,0 +1,41 @@
+# Binaires produits par « make build » / « make cross » / GoReleaser.
+dist/
+# Binaires GoReleaser installés par la CI de release.
+.tools/
+
+# Racines de flake (nix build .#…)
+result
+result-*
+
+# Livrables écrits par le CLI dans le dossier courant (schema.json,
+# schema_physique.html, schema.svg, relations.svg).
+schema.json
+schema_physique.html
+*.svg
+
+# Binaires Windows et binaires Linux construits à la racine.
+*.exe
+/mysql-schema-diagram
+/mysql-schema-diagram-gui
+
+# Fixtures issues de vraies bases : elles restent locales et ne sont jamais
+# publiées. Le test de fidélité les utilise si elles sont là (voir README) ;
+# sinon il se rabat sur les fixtures synthétiques commitées.
+testdata/oracle/real_*
+testdata/oracle/*local*
+testdata/oracle/*.local.*
+# Filets complémentaires, ailleurs dans l'arborescence. Ils ne peuvent pas être
+# exhaustifs (une variante de casse ou de séparateur passe toujours au travers) :
+# le garde qui compte est tools/leakguard, qui cherche les identifiants dans le
+# CONTENU des fichiers suivis, quel que soit leur nom.
+**/*dump*.sql
+**/*dump*.tsv
+**/real*.sql
+**/real*.tsv
+
+# Arbre vendorié, produit par « make wine-compat » : transitoire, jamais commité.
+# Il n'existe que pour appliquer le correctif de compatibilité Wine à Gio.
+vendor/
+
+# Environnement de développement.
+.direnv/
