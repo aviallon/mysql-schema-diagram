@@ -1,0 +1,15 @@
+# Identifiants légitimes : des noms qui apparaissent dans les fixtures
+# confidentielles ET dans le dépôt pour de bonnes raisons. Un identifiant par
+# ligne, précédé d'un commentaire qui dit pourquoi.
+#
+# Ce fichier est le seul moyen d'assumer un faux positif sans désactiver le
+# garde. Chaque entrée doit se justifier : une entrée ajoutée pour faire taire
+# une vraie fuite transforme le garde en décoration.
+
+# « id_article » : nom composé de deux mots génériques. Il existe bel et bien,
+# mot pour mot, dans le schéma de production — mais dans des tables qui n'ont
+# rien à voir. La fixture synthétique du dépôt l'emploie pour une table
+# `article` entièrement inventée (le schéma de production n'a pas de table
+# `article`). La collision porte donc sur un nom de colonne banal, pas sur un
+# élément du schéma réel : ce n'est pas une fuite.
+id_article
