@@ -1,0 +1,71 @@
+table_name	ordinal_position	column_name	column_type	is_nullable	column_key	column_default	extra	character_set_name	collation_name	generation_expression	column_comment
+article	1	id_article	int(11)	NO	PRI	NULL	auto_increment	NULL	NULL	NULL	
+article	2	id_catalogue	int(11)	NO	MUL	NULL		NULL	NULL	NULL	
+article	3	fk_id_catalogue	int(11)	YES	MUL	NULL		NULL	NULL	NULL	
+article	4	ref	varchar(20)	YES		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+catalogue	1	id_catalogue	int(11)	NO	PRI	NULL	auto_increment	NULL	NULL	NULL	
+catalogue	2	libelle	varchar(40)	NO		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_anon_child	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_anon_child	2	pid	int(11)	NO	MUL	NULL		NULL	NULL	NULL	
+edge_anon_parent	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_charset	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_charset	2	commented	int(11)	NO		NULL		NULL	NULL	NULL	commentaire de colonne
+edge_charset	3	annee	year(4)	YES		NULL		NULL	NULL	NULL	
+edge_charset	4	only_collate	varchar(10)	YES		NULL		utf8mb4	utf8mb4_bin	NULL	
+edge_child	1	id	int(11)	NO	PRI	NULL	auto_increment	NULL	NULL	NULL	
+edge_child	2	parent_id	int(11)	NO	MUL	NULL		NULL	NULL	NULL	
+edge_child	3	parent_code	varchar(20)	YES		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_child	4	note	varchar(50)	YES	MUL	NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_dropcol	1	a	int(11)	NO	MUL	NULL		NULL	NULL	NULL	
+edge_dropcol	2	c	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_keys	1	sn	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_keys	2	sc	varchar(10)	NO	UNI	NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_keys	3	nn	int(11)	YES	UNI	NULL		NULL	NULL	NULL	
+edge_keys	4	s1	int(11)	NO	MUL	NULL		NULL	NULL	NULL	
+edge_keys	5	s2	int(11)	NO	MUL	NULL		NULL	NULL	NULL	
+edge_nopk	1	a	int(11)	NO		NULL		NULL	NULL	NULL	
+edge_nopk	2	b	varchar(10)	NO		NULL		utf8mb3	utf8mb3_general_ci	NULL	
+edge_parent	1	id	int(11)	NO	PRI	NULL	auto_increment	NULL	NULL	NULL	
+edge_parent	2	code	varchar(20)	NO	UNI	NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_partitioned	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_positions	1	y	int(11)	NO		NULL		NULL	NULL	NULL	
+edge_positions	2	a	int(11)	NO	PRI	NULL	auto_increment	NULL	NULL	NULL	
+edge_positions	3	z	int(11)	NO		NULL		NULL	NULL	NULL	
+edge_positions	4	c	int(11)	NO		NULL		NULL	NULL	NULL	
+edge_renamed_new	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_renamed_new	2	valeur	int(11)	YES		NULL		NULL	NULL	NULL	
+edge_timestamps	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_timestamps	2	ts_first	timestamp	NO		current_timestamp()	on update current_timestamp()	NULL	NULL	NULL	
+edge_timestamps	3	ts_nullable	timestamp	YES		NULL		NULL	NULL	NULL	
+edge_timestamps	4	ts_explicit	timestamp	NO		'2020-01-01 00:00:00'		NULL	NULL	NULL	
+edge_timestamps	5	ts_later	timestamp	NO		'0000-00-00 00:00:00'		NULL	NULL	NULL	
+edge_ts_default_first	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_ts_default_first	2	a	timestamp	NO		'2020-01-01 00:00:00'		NULL	NULL	NULL	
+edge_ts_default_first	3	b	timestamp	NO		'0000-00-00 00:00:00'		NULL	NULL	NULL	
+edge_ts_null_first	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_ts_null_first	2	a	timestamp	YES		NULL		NULL	NULL	NULL	
+edge_ts_null_first	3	b	timestamp	NO		'0000-00-00 00:00:00'		NULL	NULL	NULL	
+edge_ts_precision	1	id	int(11)	NO	PRI	NULL		NULL	NULL	NULL	
+edge_ts_precision	2	ts3	timestamp(3)	NO		current_timestamp(3)		NULL	NULL	NULL	
+edge_types	1	id	int(10) unsigned	NO	PRI	NULL	auto_increment	NULL	NULL	NULL	
+edge_types	2	big	bigint(20) unsigned	YES	MUL	NULL		NULL	NULL	NULL	
+edge_types	3	zero	int(10) unsigned zerofill	YES		NULL		NULL	NULL	NULL	
+edge_types	4	price	decimal(10,2)	NO		0.00		NULL	NULL	NULL	
+edge_types	5	kind	enum('alpha','beta','gamma')	NO	MUL	'alpha'		utf8mb4	utf8mb4_general_ci	NULL	
+edge_types	6	flags	set('x','y','z')	YES		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_types	7	tiny_flag	tinyint(1)	NO		0		NULL	NULL	NULL	
+edge_types	8	wide_flag	tinyint(4)	NO		0		NULL	NULL	NULL	
+edge_types	9	body	text	YES	MUL	NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_types	10	when_at	datetime	NO		'2000-01-01 00:00:00'		NULL	NULL	NULL	
+edge_types	11	created	timestamp	NO		current_timestamp()	on update current_timestamp()	NULL	NULL	NULL	
+edge_types	12	counter	int(11)	NO		0		NULL	NULL	NULL	
+edge_types	13	total	int(11)	YES		NULL	STORED GENERATED	NULL	NULL	`counter` * 2	
+edge_types	14	latin_name	varchar(40)	YES	MUL	NULL		latin1	latin1_swedish_ci	NULL	
+edge_types	15	payload	longtext	YES		NULL		utf8mb3	utf8mb3_bin	NULL	
+edge_view	1	id	int(11)	NO		0		NULL	NULL	NULL	
+edge_view	2	code	varchar(20)	NO		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+edge_view_commented	1	id	int(11)	NO		0		NULL	NULL	NULL	
+edge_view_commented	2	code	varchar(20)	NO		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+plain_registry	1	code	varchar(20)	NO		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+plain_registry	2	label	varchar(100)	YES		NULL		utf8mb4	utf8mb4_general_ci	NULL	
+plain_registry	3	amount	int(11)	NO		0		NULL	NULL	NULL	

@@ -1,0 +1,3 @@
+table_name	constraint_name	column_name	referenced_table_name	referenced_column_name
+edge_anon_child	edge_anon_child_ibfk_1	pid	edge_anon_parent	id
+edge_child	fk_edge_child_parent	parent_id	edge_parent	id

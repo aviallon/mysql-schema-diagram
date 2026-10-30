@@ -1,0 +1,36 @@
+table_name	index_name	non_unique	seq_in_index	column_name	coalesce(sub_part, '')	index_type
+article	k_catalogue	1	1	id_catalogue		BTREE
+article	k_fk_catalogue	1	1	fk_id_catalogue		BTREE
+article	PRIMARY	0	1	id_article		BTREE
+catalogue	PRIMARY	0	1	id_catalogue		BTREE
+edge_anon_child	k_pid	1	1	pid		BTREE
+edge_anon_child	PRIMARY	0	1	id		BTREE
+edge_anon_parent	PRIMARY	0	1	id		BTREE
+edge_charset	PRIMARY	0	1	id		BTREE
+edge_child	fk_parent	1	1	parent_id		BTREE
+edge_child	idx_note	1	1	note	5	BTREE
+edge_child	PRIMARY	0	1	id		BTREE
+edge_dropcol	idx_ab	1	1	a		BTREE
+edge_dropcol	PRIMARY	0	1	c		BTREE
+edge_keys	k_s2	1	1	s2		BTREE
+edge_keys	u_comp	0	1	s1		BTREE
+edge_keys	u_comp	0	2	s2		BTREE
+edge_keys	u_nn	0	1	nn		BTREE
+edge_keys	u_sc	0	1	sc		BTREE
+edge_keys	u_sn	0	1	sn		BTREE
+edge_parent	PRIMARY	0	1	id		BTREE
+edge_parent	uq_code	0	1	code		BTREE
+edge_partitioned	PRIMARY	0	1	id		BTREE
+edge_positions	PRIMARY	0	1	a		BTREE
+edge_renamed_new	PRIMARY	0	1	id		BTREE
+edge_timestamps	PRIMARY	0	1	id		BTREE
+edge_ts_default_first	PRIMARY	0	1	id		BTREE
+edge_ts_null_first	PRIMARY	0	1	id		BTREE
+edge_ts_precision	PRIMARY	0	1	id		BTREE
+edge_types	ft_body	1	1	body		FULLTEXT
+edge_types	idx_kind_big	1	1	kind		BTREE
+edge_types	idx_kind_big	1	2	big		BTREE
+edge_types	idx_latin_prefix	1	1	latin_name	10	BTREE
+edge_types	PRIMARY	0	1	id		BTREE
+edge_types	uq_big_kind	0	1	big		BTREE
+edge_types	uq_big_kind	0	2	kind		BTREE
