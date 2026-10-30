@@ -1,0 +1,61 @@
+# Intégration continue de MySQL Schema Diagram.
+#
+# ATTENTION : ce fichier et .gitea/workflows/ci.yml sont IDENTIQUES, octet pour
+# octet. Le dépôt peut vivre sur GitHub ou sur une instance Gitea/Forgejo ; le
+# job « coherence » refuse toute divergence entre les deux arborescences.
+# Toute modification doit donc être faite des deux côtés en même temps.
+#
+# Aucun paquet système n'est nécessaire : la porte de staticité est un programme
+# Go (tools/peimports), pas un objdump — et Gio se compile en Go pur sous
+# Windows, sans mingw ni cgo.
+#
+# Le flake Nix n'est volontairement pas testé ici : les runners n'ont pas Nix
+# installé, et une action tierce (install-nix-action) peut ne pas être
+# résolvable depuis une instance Gitea. « nix build .#mysql-schema-diagram » se vérifie
+# en local (voir README) plutôt que par un job qui échoue.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  coherence:
+    name: workflows identiques (.github vs .gitea)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comparer les deux arborescences de workflows
+        run: diff -r .github/workflows .gitea/workflows
+
+  test:
+    name: go vet + go test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+      - name: make lint (gofmt doit être vide)
+        run: make lint
+      - name: make test
+        run: make test
+      - name: Garde de confidentialité (muet s'il n'y a pas de fixture locale)
+        run: make leakguard
+
+  cross:
+    name: cross Windows + porte de staticité
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+      - name: Binaires Windows, Go pur (CGO_ENABLED=0)
+        run: make cross
+      - name: Porte de staticité (aucune DLL hôte importée)
+        run: make gate

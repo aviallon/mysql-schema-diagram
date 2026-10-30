@@ -1,0 +1,122 @@
+# GoReleaser — publication des binaires de MySQL Schema Diagram sur les tags « v* ».
+#
+# Deux builds :
+#   * cli : pur Go (CGO_ENABLED=0), 6 cibles — linux/darwin/windows × amd64/arm64 ;
+#   * gui : Windows seulement, pur Go (Gio n'exige pas cgo sous Windows), amd64+arm64.
+#           La GUI Linux exige cgo (X11, Wayland, Vulkan) : elle est fournie par le
+#           flake Nix (« nix build .#gui »), pas par GoReleaser.
+#
+# La porte de staticité (tools/peimports) tourne AVANT la publication, sur les
+# .exe réellement produits par GoReleaser : voir .github/workflows/release.yml.
+#
+# Les builds partent d'un arbre vendorié patché (hook « before ») : la GUI
+# Windows publiée est donc la même que celle produite par « make cross », et elle
+# fonctionne sous Wine.
+
+version: 2
+
+project_name: mysql-schema-diagram
+
+before:
+  hooks:
+    # Les binaires publiés doivent être ceux qu'on teste : la GUI Windows est
+    # construite à partir de l'arbre vendorié patché (voir docs/wine.md). Sans
+    # cette étape, GoReleaser repasserait par le cache de modules, donc par un
+    # Gio non patché dont la fenêtre ne s'ouvre pas sous Wine.
+    - bash hack/vendor-patched.sh
+
+builds:
+  - id: cli
+    main: ./cmd/mysql-schema-diagram
+    binary: mysql-schema-diagram
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -X main.version={{ .Version }}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+  - id: gui
+    main: ./cmd/mysql-schema-diagram-gui
+    binary: mysql-schema-diagram-gui
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -H=windowsgui
+      - -X main.version={{ .Version }}
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: cli
+    ids:
+      - cli
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+  - id: gui
+    ids:
+      - gui
+    formats:
+      - zip
+    name_template: >-
+      {{ .ProjectName }}-gui_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+# Journal des modifications forge-agnostique : il est calculé depuis l'historique
+# git local, pas depuis l'API GitHub — le dépôt peut vivre sur GitHub ou Gitea.
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^chore:"
+      - "^docs:"
+      - "^test:"
+      - "^style:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  draft: false
+  # Un tag v1.2.3-rc1 devient automatiquement une pré-version.
+  prerelease: auto
+  name_template: "{{ .ProjectName }} {{ .Tag }}"
+  # Relancer la CI d'un tag écrase la release au lieu d'échouer.
+  mode: replace
+
+# Pour publier depuis une instance Gitea/Forgejo plutôt que GitHub, ajouter ici
+# (et exposer GITEA_TOKEN dans le workflow) :
+#
+#   gitea_urls:
+#     api: https://gitea.example.org/api/v1
+#     download: https://gitea.example.org
+#   release:
+#     gitea:
+#       owner: aviallon
+#       name: mysql-schema-diagram
+#
+# GoReleaser choisit la forge à partir du jeton présent (GITHUB_TOKEN par défaut).

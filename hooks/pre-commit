@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Hook pré-commit de MySQL Schema Diagram.
+#
+# Installation (une seule fois par clone) :
+#
+#   git config core.hooksPath hooks
+#
+# Le hook est versionné avec le dépôt : il fait donc partie de ce qui est relu
+# en revue, contrairement à un fichier posé à la main dans .git/hooks.
+#
+# Il reproduit « make lint » et ajoute la cohérence des deux arborescences de
+# workflows (.github et .gitea doivent être identiques, octet pour octet).
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+if ! command -v go >/dev/null 2>&1; then
+	echo "pre-commit : go introuvable — lancez le hook dans « nix develop »." >&2
+	exit 1
+fi
+
+echo "[pre-commit] gofmt"
+unformatted="$(gofmt -l .)"
+if [ -n "$unformatted" ]; then
+	echo "gofmt : fichiers à reformater (lancer « make fmt ») :" >&2
+	printf '%s\n' "$unformatted" >&2
+	exit 1
+fi
+
+# GOOS=windows + CGO_ENABLED=0 évite la GUI Linux (qui exige X11, Wayland et
+# Vulkan), tout en vérifiant l'intégralité du module.
+echo "[pre-commit] go vet"
+CGO_ENABLED=0 GOOS=windows go vet ./...
+# 2>/dev/null : « go list » se plaint de la GUI, exclue ci-dessous ; une
+# énumération vide ferait de toute façon échouer le vet (« no Go files »).
+CGO_ENABLED=0 go vet $(CGO_ENABLED=0 go list ./... 2>/dev/null | grep -v '/cmd/mysql-schema-diagram-gui$' || true)
+
+echo "[pre-commit] workflows .github / .gitea identiques"
+diff -r .github/workflows .gitea/workflows
+
+# Les dumps de production ne sont jamais dans le dépôt : ce garde vérifie que
+# leurs identifiants n'y entrent pas par une autre porte (un exemple recopié
+# dans le README, un commentaire de code, un nom de test). Sans fixture
+# confidentielle locale, il ne fait rien et réussit.
+echo "[pre-commit] fuite d'identifiants confidentiels"
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
+if [ -n "$staged" ]; then
+	# shellcheck disable=SC2086 # les chemins sont volontairement éclatés
+	CGO_ENABLED=0 go run ./tools/leakguard -allow tools/leakguard/allowlist.txt $staged
+else
+	echo "  (aucun fichier indexé)"
+fi
+
+echo "[pre-commit] ok"

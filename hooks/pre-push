@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Hook pré-push de MySQL Schema Diagram.
+#
+# Installation (une seule fois par clone) :
+#
+#   git config core.hooksPath hooks
+#
+# Il rejoue exactement le hook pré-commit, puis la suite de tests : ce qui part
+# vers la forge a donc passé gofmt, go vet, la cohérence des workflows et les
+# tests, y compris les oracles information_schema.
+set -euo pipefail
+
+racine="$(git rev-parse --show-toplevel)"
+cd "$racine"
+
+if ! command -v go >/dev/null 2>&1; then
+	echo "pre-push : go introuvable — lancez le hook dans « nix develop »." >&2
+	exit 1
+fi
+
+# Tout ce que fait le pré-commit : gofmt, go vet, diff des workflows.
+"$racine/hooks/pre-commit"
+
+# …plus la suite de tests (sans la GUI, dont les tests exigent cgo sous Linux).
+echo "[pre-push] go test"
+CGO_ENABLED=0 go test $(CGO_ENABLED=0 go list ./... 2>/dev/null | grep -v '/cmd/mysql-schema-diagram-gui$' || true)
+
+echo "[pre-push] ok"

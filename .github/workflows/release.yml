@@ -1,0 +1,89 @@
+# Publication d'une release de MySQL Schema Diagram, déclenchée par un tag « v* ».
+#
+# ATTENTION : ce fichier et .gitea/workflows/release.yml sont IDENTIQUES, octet
+# pour octet (le job de cohérence de ci.yml le vérifie).
+#
+# L'ordre est le cœur de la cible : GoReleaser construit d'abord les binaires
+# sans rien publier, la porte de staticité examine les .exe réellement produits,
+# puis la publication a lieu. Une release ne peut donc pas contourner le
+# contrôle — et si la porte échoue, rien n'est publié.
+#
+# GoReleaser est installé depuis la chaîne Go déjà présente plutôt que par une
+# action tierce : le runner n'a alors à résoudre que checkout et setup-go.
+# Version figée en dur ; elle ne vient PAS du flake Nix (qui ne la fournit pas).
+#
+# Le tag doit être SIGNÉ : le trousseau du runner ne contient que la clé publique
+# du mainteneur, donc un tag non signé — ou signé par une autre clé — ne publie
+# rien. Créer un tag de release avec :  git tag -s v0.1.0 -m "…"
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: porte de staticité puis publication
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le dépôt (historique complet pour le changelog)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+
+      - name: Récupérer les objets de tags (annotés)
+        # actions/checkout ne récupère que le commit et laisse derrière lui un tag
+        # *léger* : sans l'objet annoté, « git tag -v » répond « cannot verify a
+        # non-tag object of type commit » et la release serait bloquée à tort.
+        run: git fetch --force origin '+refs/tags/*:refs/tags/*'
+
+      - name: Vérifier que le tag est SIGNÉ (et par la bonne clé)
+        # Aucune release n'est publiée depuis un tag non signé ou signé par une
+        # autre clé : le trousseau du runner est vidé et ne reçoit QUE la clé
+        # publique du mainteneur, donc toute autre signature est rejetée.
+        run: |
+          set -euo pipefail
+          export GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          gpg --batch --quiet --import third_party/keys/*.asc
+          gpg --list-keys --with-colons | awk -F: '/^fpr/{print "  clé de confiance : " $10}'
+          git tag -v "${{ github.ref_name }}"
+
+      - name: Installer GoReleaser
+        run: |
+          GOBIN="$PWD/.tools" go install github.com/goreleaser/goreleaser/v2@v2.17.1
+          ./.tools/goreleaser --version
+
+      - name: Vérifier la configuration GoReleaser
+        run: ./.tools/goreleaser check
+
+      - name: Construire les binaires Windows/Linux/macOS (sans publier)
+        run: ./.tools/goreleaser build --snapshot --clean
+
+      - name: Porte de staticité sur les .exe produits
+        run: |
+          set -euo pipefail
+          mapfile -t exes < <(find dist -type f -name '*.exe' | sort)
+          if [ "${#exes[@]}" -eq 0 ]; then
+            echo "aucun .exe produit : Windows serait publié sans binaire" >&2
+            exit 1
+          fi
+          printf '  %s\n' "${exes[@]}"
+          go run ./tools/peimports "${exes[@]}"
+
+      # Pour publier depuis une instance Gitea/Forgejo : ajouter le bloc
+      # release.gitea + gitea_urls dans .goreleaser.yaml (voir son en-tête) et
+      # exposer GITEA_TOKEN ici. Sur GitHub, GITHUB_TOKEN suffit.
+      - name: Publier la release (archives, checksums.txt, notes)
+        run: ./.tools/goreleaser release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
