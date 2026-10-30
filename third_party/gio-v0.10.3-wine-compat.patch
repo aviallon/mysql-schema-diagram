@@ -1,0 +1,79 @@
+--- a/vendor/gioui.org/app/os_windows.go
++++ b/vendor/gioui.org/app/os_windows.go
+@@ -205,7 +205,10 @@
+ 		return err
+ 	}
+ 	if err := windows.EnableMouseInPointer(1); err != nil {
+-		return err
++		// WINE: EnableMouseInPointer is a stub (winehq bug 53847) that always
++		// fails with ERROR_CALL_NOT_IMPLEMENTED. Tolerate the failure so the
++		// window can still be created; WM_MOUSE* fallback below keeps input
++		// working under Wine.
+ 	}
+ 	w.hdc, err = windows.GetDC(hwnd)
+ 	if err != nil {
+@@ -358,6 +361,64 @@
+ 		if e.abort {
+ 			return 0
+ 		}
++	// WINE FALLBACK: Wine does not implement EnableMouseInPointer (wine bug
++	// 53847), so WM_POINTER* never arrives. Translate classic WM_MOUSE*
++	// messages into gio pointer events so the app is usable under Wine.
++	case windows.WM_MOUSEMOVE,
++		windows.WM_LBUTTONDOWN, windows.WM_LBUTTONUP,
++		windows.WM_RBUTTONDOWN, windows.WM_RBUTTONUP,
++		windows.WM_MBUTTONDOWN, windows.WM_MBUTTONUP:
++		var kind pointer.Kind = pointer.Move
++		switch msg {
++		case windows.WM_LBUTTONDOWN, windows.WM_RBUTTONDOWN, windows.WM_MBUTTONDOWN:
++			kind = pointer.Press
++		case windows.WM_LBUTTONUP, windows.WM_RBUTTONUP, windows.WM_MBUTTONUP:
++			kind = pointer.Release
++		}
++		var btns pointer.Buttons
++		if wParam&0x0001 != 0 { // MK_LBUTTON
++			btns |= pointer.ButtonPrimary
++		}
++		if wParam&0x0002 != 0 { // MK_RBUTTON
++			btns |= pointer.ButtonSecondary
++		}
++		if wParam&0x0010 != 0 { // MK_MBUTTON
++			btns |= pointer.ButtonTertiary
++		}
++		x, y := coordsFromlParam(lParam) // WM_MOUSE* lParam: client coordinates
++		if !w.config.Focused {
++			windows.SetFocus(w.hwnd)
++		}
++		w.ProcessEvent(pointer.Event{
++			Kind:      kind,
++			Source:    pointer.Mouse,
++			Position:  f32.Pt(float32(x), float32(y)),
++			Buttons:   btns,
++			Time:      windows.GetMessageTime(),
++			Modifiers: getModifiers(),
++		})
++	case windows.WM_MOUSEWHEEL, windows.WM_MOUSEHWHEEL:
++		dist := float32(int16(wParam >> 16))
++		var sp f32.Point
++		kmods := getModifiers()
++		if msg == windows.WM_MOUSEHWHEEL {
++			sp.X = dist
++		} else if kmods == key.ModShift {
++			sp.X = -dist
++		} else {
++			sp.Y = -dist
++		}
++		x, y := coordsFromlParam(lParam) // WM_MOUSEWHEEL: screen coordinates
++		np := windows.Point{X: int32(x), Y: int32(y)}
++		windows.ScreenToClient(w.hwnd, &np)
++		w.ProcessEvent(pointer.Event{
++			Kind:      pointer.Scroll,
++			Source:    pointer.Mouse,
++			Position:  f32.Pt(float32(np.X), float32(np.Y)),
++			Scroll:    sp,
++			Modifiers: kmods,
++			Time:      windows.GetMessageTime(),
++		})
+ 	case windows.WM_POINTERWHEEL:
+ 		w.scrollEvent(wParam, lParam, false, getModifiers())
+ 	case windows.WM_POINTERHWHEEL:
