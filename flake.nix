@@ -46,7 +46,7 @@
           pname = "mysql-schema-diagram";
           version = self.shortRev or "dev";
           src = self;
-          vendorHash = "sha256-Z7dnnM0SBEuHgAt6GdpeqbKBEDpTum3Kwx347tKYNLI=";
+          vendorHash = "sha256-gq+FGLCgxv1M2YUoINrK1YOJpNMqyjLGqpnhWulbFEA=";
           subPackages = [ "cmd/mysql-schema-diagram" ];
           ldflags = [
             "-s"
@@ -65,11 +65,19 @@
           pname = "mysql-schema-diagram-gui";
           version = self.shortRev or "dev";
           src = self;
-          vendorHash = "sha256-Z7dnnM0SBEuHgAt6GdpeqbKBEDpTum3Kwx347tKYNLI=";
+          vendorHash = "sha256-gq+FGLCgxv1M2YUoINrK1YOJpNMqyjLGqpnhWulbFEA=";
           subPackages = [ "cmd/mysql-schema-diagram-gui" ];
           # Gio a besoin de cgo sous Linux (X11, Wayland, Vulkan).
           cgoEnabled = true;
-          nativeBuildInputs = [ pkgs.pkg-config ];
+          # Le sélecteur de fichiers est celui du bureau : sans l'un de ces deux
+          # programmes, le bouton « Parcourir… » n'a rien à ouvrir. Ils sont mis
+          # dans le PATH du binaire par un wrapper — pas seulement dans le shell
+          # de développement, où cela ne servirait qu'à moi.
+          nativeBuildInputs = [ pkgs.makeWrapper pkgs.pkg-config ];
+          postFixup = ''
+            wrapProgram $out/bin/mysql-schema-diagram-gui \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.kdePackages.kdialog pkgs.zenity ]}
+          '';
           buildInputs = nixpkgs.lib.optionals pkgs.stdenv.hostPlatform.isLinux (gioLinuxLibs pkgs);
           ldflags = [
             "-s"
@@ -92,6 +100,11 @@
             pkgs.git
             pkgs.binutils # objdump : porte de staticité des .exe
             pkgs.mariadb_106 # régénération de l'oracle information_schema
+            # Le dialogue de fichiers de la GUI est celui du bureau : kdialog sur
+            # KDE, zenity ailleurs. Sans l'un des deux, « Parcourir… » n'a rien à
+            # ouvrir.
+            pkgs.kdePackages.kdialog
+            pkgs.zenity
           ];
 
           # pkg-config doit être un outil de construction, et les bibliothèques

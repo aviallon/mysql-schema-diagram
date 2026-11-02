@@ -63,7 +63,10 @@ $ mysql-schema-diagram -list-dialects
 ```
 
 L'interface graphique fait la même chose en trois champs — fichier, dossier de
-sortie, version du serveur :
+sortie, version du serveur. « Parcourir… » ouvre **le dialogue du bureau** (KDE,
+GNOME, ou celui de Windows), pas un sélecteur maison : on y retrouve ses favoris,
+ses disques réseau et ses raccourcis. Sur Linux, il faut `zenity` ou `kdialog`
+installés — le paquet Nix les embarque.
 
 ![Interface graphique](docs/img/gui-linux.png)
 
@@ -111,7 +114,8 @@ inventé coûte plus cher qu'un lien manquant, parce qu'il ne se voit pas.
   (`mysqldump --no-data`), pas un dump avec les données.
 - La **GUI Linux** n'est pas publiée en binaire : elle exige cgo (X11, Wayland,
   Vulkan), donc elle est fournie par le flake. La GUI Windows, elle, est un
-  `.exe` unique sans DLL hôte.
+  `.exe` unique sans DLL hôte — son dialogue de fichiers est celui de Windows,
+  appelé en Go pur.
 
 ## Développement
 

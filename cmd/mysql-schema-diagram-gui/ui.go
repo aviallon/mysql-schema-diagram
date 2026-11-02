@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"image/color"
-	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"gioui.org/font/gofont"
@@ -17,6 +15,7 @@ import (
 
 	"github.com/aviallon/mysql-schema-diagram/internal/app"
 	"github.com/aviallon/mysql-schema-diagram/internal/dialect"
+	"github.com/aviallon/mysql-schema-diagram/internal/nativedialog"
 )
 
 // ui porte tout l'état de la fenêtre. Gio étant en mode immédiat, il n'y a pas
@@ -44,10 +43,17 @@ type ui struct {
 	running   bool
 	lastDir   string
 
-	picker picker
-
 	events     chan workEvent
+	dialogs    chan dialogResult
 	invalidate func()
+}
+
+// dialogResult est le retour du dialogue système, ramené sur la goroutine
+// principale : Gio n'autorise l'écriture de l'état que là.
+type dialogResult struct {
+	path  string
+	isDir bool
+	err   error
 }
 
 // colorDanger est le rouge du message d'erreur.
@@ -75,6 +81,7 @@ func newUI(invalidate func()) *ui {
 		status:     "Choisissez un fichier SQL, un dossier de sortie, puis lancez l'analyse.",
 		log:        widget.List{List: layout.List{Axis: layout.Vertical}},
 		events:     make(chan workEvent, 256),
+		dialogs:    make(chan dialogResult, 4),
 		invalidate: invalidate,
 	}
 	u.input.SingleLine = true
@@ -85,11 +92,6 @@ func newUI(invalidate func()) *ui {
 
 func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 	u.drain()
-
-	if u.picker.active {
-		u.picker.handle(gtx, u)
-		return u.picker.layout(gtx, u.th)
-	}
 
 	u.handleClicks(gtx)
 
@@ -107,6 +109,8 @@ func (u *ui) layout(gtx layout.Context) layout.Dimensions {
 func (u *ui) drain() {
 	for {
 		select {
+		case res := <-u.dialogs:
+			u.applyDialog(res)
 		case ev := <-u.events:
 			switch {
 			case ev.err != nil:
@@ -131,10 +135,10 @@ func (u *ui) drain() {
 
 func (u *ui) handleClicks(gtx layout.Context) {
 	if u.browseInput.Clicked(gtx) {
-		u.picker.open(pickInput, firstNonEmpty(u.input.Text(), u.output.Text()))
+		u.chooseFile()
 	}
 	if u.browseOutput.Clicked(gtx) {
-		u.picker.open(pickDirectory, firstNonEmpty(u.output.Text(), u.input.Text()))
+		u.chooseFolder()
 	}
 	if u.generate.Clicked(gtx) && !u.running {
 		u.start()
@@ -311,6 +315,44 @@ func (u *ui) start() {
 	}()
 }
 
+// chooseFile ouvre le dialogue du système dans une goroutine : il bloque jusqu'au
+// choix de l'utilisateur, et Gio n'admet pas qu'on bloque la boucle d'événements.
+// Le résultat revient par un canal, consommé par drain().
+func (u *ui) chooseFile() {
+	go func() {
+		path, err := nativedialog.OpenFile("Choisir le dump SQL",
+			nativedialog.Filter{Label: "Fichiers SQL", Patterns: []string{"*.sql"}},
+			nativedialog.Filter{Label: "Tous les fichiers", Patterns: []string{"*"}})
+		u.dialogs <- dialogResult{path: path, err: err}
+		u.invalidate()
+	}()
+}
+
+func (u *ui) chooseFolder() {
+	go func() {
+		path, err := nativedialog.OpenFolder("Choisir le dossier de sortie")
+		u.dialogs <- dialogResult{path: path, isDir: true, err: err}
+		u.invalidate()
+	}()
+}
+
+// applyDialog applique le choix de l'utilisateur, sur la goroutine principale.
+func (u *ui) applyDialog(res dialogResult) {
+	switch {
+	case res.err != nil:
+		u.setStatus(res.err.Error(), true)
+	case res.path == "":
+		// Annulation : il n'y a rien à signaler.
+	case res.isDir:
+		u.output.SetText(res.path)
+	default:
+		u.input.SetText(res.path)
+		if strings.TrimSpace(u.output.Text()) == "" {
+			u.output.SetText(filepath.Dir(res.path))
+		}
+	}
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if strings.TrimSpace(v) != "" {
@@ -318,175 +360,4 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
-}
-
-// ---------------------------------------------------------------------------
-// Sélecteur de fichiers intégré
-//
-// Aucun appel à zenity ni à un dialogue natif : le parcours du système de
-// fichiers est fait en Go, ce qui garde le binaire autonome et identique sur
-// toutes les plateformes.
-// ---------------------------------------------------------------------------
-
-type pickKind int
-
-const (
-	pickInput pickKind = iota
-	pickDirectory
-)
-
-type picker struct {
-	active  bool
-	kind    pickKind
-	dir     string
-	entries []pickEntry
-	list    widget.List
-	up      widget.Clickable
-	cancel  widget.Clickable
-	choose  widget.Clickable
-	message string
-}
-
-type pickEntry struct {
-	name  string
-	isDir bool
-	click widget.Clickable
-}
-
-func (p *picker) open(kind pickKind, start string) {
-	dir := strings.TrimSpace(start)
-	if dir == "" {
-		dir, _ = os.Getwd()
-	}
-	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
-		dir = filepath.Dir(dir)
-	}
-	p.active = true
-	p.kind = kind
-	p.list = widget.List{List: layout.List{Axis: layout.Vertical}}
-	p.message = ""
-	p.load(dir)
-}
-
-func (p *picker) load(dir string) {
-	abs, err := filepath.Abs(dir)
-	if err != nil {
-		p.message = "chemin illisible : " + err.Error()
-		return
-	}
-	items, err := os.ReadDir(abs)
-	if err != nil {
-		p.message = "lecture impossible : " + err.Error()
-		return
-	}
-	p.dir = abs
-	p.entries = nil
-	if parent := filepath.Dir(abs); parent != abs {
-		p.entries = append(p.entries, pickEntry{name: "..", isDir: true})
-	}
-	sort.Slice(items, func(i, j int) bool {
-		if items[i].IsDir() != items[j].IsDir() {
-			return items[i].IsDir()
-		}
-		return strings.ToLower(items[i].Name()) < strings.ToLower(items[j].Name())
-	})
-	for _, it := range items {
-		name := it.Name()
-		if strings.HasPrefix(name, ".") {
-			continue
-		}
-		isDir := it.IsDir()
-		if !isDir && p.kind == pickInput && !strings.EqualFold(filepath.Ext(name), ".sql") {
-			continue
-		}
-		p.entries = append(p.entries, pickEntry{name: name, isDir: isDir})
-	}
-}
-
-func (p *picker) handle(gtx layout.Context, u *ui) {
-	if p.cancel.Clicked(gtx) {
-		p.active = false
-		return
-	}
-	if p.choose.Clicked(gtx) {
-		u.output.SetText(p.dir)
-		p.active = false
-		return
-	}
-	if p.up.Clicked(gtx) {
-		p.load(filepath.Dir(p.dir))
-		return
-	}
-	for i := range p.entries {
-		if !p.entries[i].click.Clicked(gtx) {
-			continue
-		}
-		entry := p.entries[i]
-		if entry.isDir {
-			p.load(filepath.Join(p.dir, entry.name))
-			continue
-		}
-		u.input.SetText(filepath.Join(p.dir, entry.name))
-		if strings.TrimSpace(u.output.Text()) == "" {
-			u.output.SetText(p.dir)
-		}
-		p.active = false
-		return
-	}
-}
-
-func (p *picker) layout(gtx layout.Context, th *material.Theme) layout.Dimensions {
-	title := "Choisir un fichier .sql"
-	if p.kind == pickDirectory {
-		title = "Choisir un dossier de sortie"
-	}
-	return layout.Inset{Left: unit.Dp(16), Right: unit.Dp(16), Top: unit.Dp(12)}.Layout(gtx,
-		func(gtx layout.Context) layout.Dimensions {
-			return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.H6(th, title).Layout(gtx)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return material.Body2(th, p.dir).Layout(gtx)
-				}),
-				layout.Rigid(layout.Spacer{Height: unit.Dp(8)}.Layout),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					return layout.Flex{Axis: layout.Horizontal, Alignment: layout.Middle}.Layout(gtx,
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return material.Button(th, &p.up, "Dossier parent").Layout(gtx)
-						}),
-						layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							if p.kind != pickDirectory {
-								return layout.Dimensions{}
-							}
-							return material.Button(th, &p.choose, "Choisir ce dossier").Layout(gtx)
-						}),
-						layout.Rigid(layout.Spacer{Width: unit.Dp(8)}.Layout),
-						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-							return material.Button(th, &p.cancel, "Annuler").Layout(gtx)
-						}),
-					)
-				}),
-				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-					if p.message == "" {
-						return layout.Dimensions{}
-					}
-					return material.Body2(th, p.message).Layout(gtx)
-				}),
-				layout.Flexed(1, func(gtx layout.Context) layout.Dimensions {
-					return p.list.Layout(gtx, len(p.entries), func(gtx layout.Context, i int) layout.Dimensions {
-						e := &p.entries[i]
-						label := e.name
-						if e.isDir && label != ".." {
-							label = "▸ " + label
-						}
-						return material.Clickable(gtx, &e.click, func(gtx layout.Context) layout.Dimensions {
-							return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4)}.Layout(gtx,
-								material.Body1(th, label).Layout)
-						})
-					})
-				}),
-			)
-		})
 }
