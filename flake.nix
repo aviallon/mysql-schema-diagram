@@ -46,7 +46,7 @@
           pname = "mysql-schema-diagram";
           version = self.shortRev or "dev";
           src = self;
-          vendorHash = "sha256-gq+FGLCgxv1M2YUoINrK1YOJpNMqyjLGqpnhWulbFEA=";
+          vendorHash = "sha256-A9oYzLkTLFNKfl/YWXkEZTlZNvDxSCjT3O5Zb6cLEuY=";
           subPackages = [ "cmd/mysql-schema-diagram" ];
           ldflags = [
             "-s"
@@ -65,7 +65,7 @@
           pname = "mysql-schema-diagram-gui";
           version = self.shortRev or "dev";
           src = self;
-          vendorHash = "sha256-gq+FGLCgxv1M2YUoINrK1YOJpNMqyjLGqpnhWulbFEA=";
+          vendorHash = "sha256-A9oYzLkTLFNKfl/YWXkEZTlZNvDxSCjT3O5Zb6cLEuY=";
           subPackages = [ "cmd/mysql-schema-diagram-gui" ];
           # Gio a besoin de cgo sous Linux (X11, Wayland, Vulkan).
           cgoEnabled = true;
