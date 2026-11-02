@@ -17,18 +17,12 @@ type Filter struct {
 
 // OpenFile fait choisir un fichier existant et renvoie son chemin.
 func OpenFile(title string, filters ...Filter) (string, error) {
-	if err := available(); err != nil {
-		return "", err
-	}
 	path, err := openFile(title, filters...)
 	return path, describe(err)
 }
 
 // OpenFolder fait choisir un dossier existant et renvoie son chemin.
 func OpenFolder(title string) (string, error) {
-	if err := available(); err != nil {
-		return "", err
-	}
 	path, err := openFolder(title)
 	return path, describe(err)
 }
@@ -61,7 +55,7 @@ func describe(err error) error {
 	}
 	msg := err.Error()
 	if strings.Contains(msg, "executable file not found") {
-		return fmt.Errorf("aucun dialogue système disponible : installez zenity ou kdialog")
+		return fmt.Errorf("aucun dialogue de fichiers disponible : vérifiez que le portail XDG tourne, ou installez zenity ou kdialog")
 	}
 	return fmt.Errorf("sélection de fichier : %w", err)
 }

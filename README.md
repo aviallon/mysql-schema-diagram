@@ -63,10 +63,13 @@ $ mysql-schema-diagram -list-dialects
 ```
 
 L'interface graphique fait la même chose en trois champs — fichier, dossier de
-sortie, version du serveur. « Parcourir… » ouvre **le dialogue du bureau** (KDE,
-GNOME, ou celui de Windows), pas un sélecteur maison : on y retrouve ses favoris,
-ses disques réseau et ses raccourcis. Sur Linux, il faut `zenity` ou `kdialog`
-installés — le paquet Nix les embarque.
+sortie, version du serveur. « Parcourir… » ouvre **le dialogue du bureau**, pas un
+sélecteur maison : on y retrouve ses favoris, ses disques réseau et ses raccourcis.
+
+Sous Linux il passe par le portail XDG (`org.freedesktop.portal.FileChooser`), donc
+c'est le dialogue du bureau — KDE, GNOME, ou celui du compositeur — et rien n'est à
+installer. Si la session n'a pas de portail, l'outil retombe sur `kdialog`, puis sur
+`zenity` ou `qarma` ; le paquet Nix les fournit pour ce cas.
 
 ![Interface graphique](docs/img/gui-linux.png)
 

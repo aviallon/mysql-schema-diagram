@@ -46,7 +46,7 @@
           pname = "mysql-schema-diagram";
           version = self.shortRev or "dev";
           src = self;
-          vendorHash = "sha256-A9oYzLkTLFNKfl/YWXkEZTlZNvDxSCjT3O5Zb6cLEuY=";
+          vendorHash = "sha256-F1aCJ3daCE9HoIoxXqESjYrU2bLmrANIgcxMJZMMMhU=";
           subPackages = [ "cmd/mysql-schema-diagram" ];
           ldflags = [
             "-s"
@@ -65,7 +65,7 @@
           pname = "mysql-schema-diagram-gui";
           version = self.shortRev or "dev";
           src = self;
-          vendorHash = "sha256-A9oYzLkTLFNKfl/YWXkEZTlZNvDxSCjT3O5Zb6cLEuY=";
+          vendorHash = "sha256-F1aCJ3daCE9HoIoxXqESjYrU2bLmrANIgcxMJZMMMhU=";
           subPackages = [ "cmd/mysql-schema-diagram-gui" ];
           # Gio a besoin de cgo sous Linux (X11, Wayland, Vulkan).
           cgoEnabled = true;
@@ -73,6 +73,10 @@
           # programmes, le bouton « Parcourir… » n'a rien à ouvrir. Ils sont mis
           # dans le PATH du binaire par un wrapper — pas seulement dans le shell
           # de développement, où cela ne servirait qu'à moi.
+          # Le dialogue de fichiers de la GUI passe par le portail XDG, qui est
+          # déjà là sur un bureau moderne et ne demande rien à installer. Le
+          # repli kdialog/zenity ne sert que sur une session sans portail — il
+          # est embarqué plutôt que supposé présent.
           nativeBuildInputs = [ pkgs.makeWrapper pkgs.pkg-config ];
           postFixup = ''
             wrapProgram $out/bin/mysql-schema-diagram-gui \
@@ -100,9 +104,8 @@
             pkgs.git
             pkgs.binutils # objdump : porte de staticité des .exe
             pkgs.mariadb_106 # régénération de l'oracle information_schema
-            # Le dialogue de fichiers de la GUI est celui du bureau : kdialog sur
-            # KDE, zenity ailleurs. Sans l'un des deux, « Parcourir… » n'a rien à
-            # ouvrir.
+            # Repli du dialogue de fichiers, quand la session n'a pas de portail
+            # XDG : kdialog sur KDE, zenity ailleurs.
             pkgs.kdePackages.kdialog
             pkgs.zenity
           ];
